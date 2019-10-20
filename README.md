@@ -1,6 +1,6 @@
 # Querying RDS from Lambda via API Gateway
 
-Wow, this took a long time. All I wanted to do was have an API Gateway that forwarded a request to a Lambda that queried an RDS instance. Was that so much to ask?! I guess not, because it worked. But it wasn't easy I tell you! Here are the steps I had to go through starting from a brand new AWS Account.
+All I wanted to do was have an API Gateway that forwarded a request to a Lambda that queried an RDS instance. Was that so much to ask?! I guess not, because it worked. But it wasn't easy I tell you! Here are the steps I had to go through starting from a brand new AWS Account.
 
 # Networking
 
@@ -75,7 +75,29 @@ Another useful article: [https://medium.com/@chamikakasun/an-aws-rds-db-instance
 
 I created a free-tier RDS Postgres instance. When you're configuring your instance, be sure to put it in the VPC you created. Toggle open the `"Additional connectivity configuration"` window, then make it "Publicly accessible", choose the "Postgres Security Group" you created, then choose an Availability Zone (I chose "us-west-2a").
 
+Choose a user and password. You'll need this to talk to the database.
+
 If you want to just mess around, you can open the final window: `"Additional Information"`. Turn off all the stuffs.
+
+
+Next, we'll need to create some data in the db:
+
+```bash
+psql -h {your_db_host} -U {your_username} postgres
+```
+
+Once on the server:
+
+```sql
+CREATE TABLE pdf_hashes (hash TEXT PRIMARY KEY CHECK (LENGTH(hash) = 40));
+INSERT INTO pdf_hashes (hash) VALUES
+  ('a4e69e06aaec4c1177e717dc8ac1374904edea60'),
+  ('46f00a1f1d09b26ef4f640e593922708ebdb28c4'),
+  ('dca79f12c1923582fe4f71fc79fd4d6a8d1c76ad')
+;
+```
+
+Cool.
 
 # Lambda
 
@@ -93,25 +115,32 @@ I used this repo for `psycopg2`: [Repo Link](https://github.com/jkehler/awslambd
 
 # API Gateway
 
-I wanted my API to look like this: `/is_valid/{hash}`. It checks if a hash is valid. :0
+I wanted my API to look like this: `/pdf_valid/{pdf_hash}`. It checks if a PDF hash is valid. :0
 
-Create a new REST API. Name it something (`is_hash_valid` is probably fine).
+Create a new REST API. Name it something (`is_pdf_hash_valid` is probably fine).
 
-In the "Resources" tab, click "Actions" and "Create Resource". Name it `is_valid`. This should set the "Resource Path" to `is_valid`. With the `is_valid` Resource selected, click "Actions" and "Create Resource". Name it `{hash}` and set the "Resource Path" to `{hash}`.
+In the "Resources" tab, click "Actions" and "Create Resource". Name it `pdf_valid`. This should set the "Resource Path" to `pdf_valid`. With the `pdf_valid` Resource selected, click "Actions" and "Create Resource". Name it `{pdf_hash}` and set the "Resource Path" to `{pdf_hash}`.
 
-On the `{hash}` resource, click "Actions" and "Create Method", then choose "GET". The "Integration type" will be "Lambda Function" and enable "Use Lambda Proxy integration". Then choose your lambda by typing it into the box.
+On the `{pdf_hash}` resource, click "Actions" and "Create Method", then choose "GET". The "Integration type" will be "Lambda Function" and enable "Use Lambda Proxy integration". Then choose your lambda by typing it into the box.
 
 Now you need to change the return type to match the Lambda return type.
 
 Click on the "Models" tab. Create a new Model with the following Model Schema:
 
-```
+```json
 {
   "$schema" : "http://json-schema.org/draft-04/schema#",
   "title" : "Hash Valid Schema",
   "type" : "object",
   "properties" : {
-    "valid" : { "type" : "boolean" }
+    "body" : {
+      "type" : "object",
+      "properties": {
+        "valid": {
+          "type": "boolean"
+        }
+      }
+    }
   }
 }
 ```
@@ -129,3 +158,11 @@ zip -r lambda.zip lambda_function.py psycopg2
 ```
 
 Automation can come later...
+
+# Testing
+
+You should be able to `curl` your API now.
+
+```bash
+curl -X GET 'https://{your_api_url}/pdf_valid/dca79f12c1923582fe4f71fc79fd4d6a8d1c76ad' | jq
+```
