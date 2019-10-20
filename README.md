@@ -1,4 +1,4 @@
-# Serverless DB Query
+# Querying RDS from Lambda via API Gateway
 
 Wow, this took a long time. All I wanted to do was have an API Gateway that forwarded a request to a Lambda that queried an RDS instance. Was that so much to ask?! I guess not, because it worked. But it wasn't easy I tell you! Here are the steps I had to go through starting from a brand new AWS Account.
 
