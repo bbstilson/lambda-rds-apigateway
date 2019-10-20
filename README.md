@@ -124,4 +124,8 @@ The final step is to "deploy" the API. Create a `"dev"` stage by clicking on the
 
 Deploying manually is easy. Just zip up the lambda stuff, then, in the Lambda Console, click your Lambda, then instead of "Edit code inline" for your "Code entry type", choose "Upload a .zip file". Hit "Save". Blamo.
 
+```bash
+zip -r lambda.zip lambda_function.py psycopg2
+```
+
 Automation can come later...
